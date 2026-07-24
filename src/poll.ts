@@ -31,7 +31,7 @@ export async function runPoll(deps: PollDeps): Promise<{ classified: number; pin
       ?? new Date(new Date(deps.now()).getTime() - DAY_MS).toISOString();
     const msgs = await deps.chat.fetchMessagesSince(spaceId, since);
 
-    // 1) try to resolve open incompletes with any new context
+    // Resolve open incompletes with any new context first.
     const open = await store.listOpenIncomplete(spaceId);
     for (const d of open) {
       if (msgs.length > 0) {
@@ -41,14 +41,12 @@ export async function runPoll(deps: PollDeps): Promise<{ classified: number; pin
         }), deps.now());
         classified++;
         await store.saveDetection(merged);
-        // Messages consumed by the merge must not also be classified as fresh
-        // triggers below, or one clarified task yields two detections/cards.
+        // Mark them processed so the loop below doesn't create a duplicate detection.
         for (const m of msgs) await store.markProcessed(m.messageId);
         if (merged.status === "pending") await send(confirmationCard(merged));
       }
     }
 
-    // 2) classify new messages from them
     for (const msg of msgs) {
       if (msg.sender !== "them") { await store.markProcessed(msg.messageId); continue; }
       if (await store.isProcessed(msg.messageId)) continue;
@@ -71,7 +69,6 @@ export async function runPoll(deps: PollDeps): Promise<{ classified: number; pin
       await store.markProcessed(msg.messageId);
     }
 
-    // 3) advance cursor
     if (msgs.length > 0) {
       const newest = msgs.reduce((a, b) =>
         new Date(a.createTime) > new Date(b.createTime) ? a : b);
@@ -79,7 +76,7 @@ export async function runPoll(deps: PollDeps): Promise<{ classified: number; pin
     }
   }
 
-  // 4) expire stale incompletes (all spaces)
+  // Stale incompletes: ping anyway as "details unclear".
   for (const d of await store.listByStatus("incomplete")) {
     if (isExpired(d, deps.now())) {
       const flipped = { ...d, status: "pending" as const, updatedAt: deps.now() };

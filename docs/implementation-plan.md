@@ -1,7 +1,5 @@
 # TaskLens Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** A headless Node.js/TypeScript Cloud Run service that polls the user's Google Chat DMs during working hours, classifies task-like messages (English/Hinglish) with Gemini Flash using full conversational context, and creates Google Tasks after a one-tap chat-card confirmation.
 
 **Architecture:** Single Express service with three endpoints — `/poll` (Cloud Scheduler, every 15 min during work hours), `/interact` (Google Chat button clicks), `/digest` (daily 9:00 summary). State lives in Firestore (poll cursors, detection lifecycle, dedupe). Reading chats uses the user's own OAuth credentials; sending confirmation cards uses the Chat app's service-account credentials.
@@ -10,7 +8,7 @@
 
 ## Global Constraints
 
-- Spec: `docs/superpowers/specs/2026-07-18-tasklens-design.md` — read it before starting.
+- Spec: `docs/design.md` — read it before starting.
 - Node.js >= 20, TypeScript `strict: true`, ESM (`"type": "module"`; local imports use `.js` extensions).
 - Timezone for all scheduling and date math: `Asia/Kolkata` (IST).
 - Poll cron: `*/15 9-19 * * 1-5` IST. Digest cron: `0 9 * * 1-5` IST.

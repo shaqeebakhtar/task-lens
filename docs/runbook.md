@@ -1,7 +1,7 @@
 # TaskLens Runbook
 
 Operational reference for the TaskLens Cloud Run service. See
-`docs/superpowers/plans/2026-07-18-tasklens.md` Task 16 for the full first-time
+`docs/implementation-plan.md` Task 16 for the full first-time
 deploy walkthrough; this page is the day-to-day cheat sheet.
 
 ## Environment variables

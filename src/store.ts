@@ -1,7 +1,6 @@
 import type { Detection, DetectionStatus } from "./types.js";
 
-// Minimal slice of the Firestore API we use — keeps the Store decoupled from the
-// concrete SDK so it can be constructed with `new Firestore(...) as any`.
+// Minimal Firestore surface the Store needs.
 export interface DocLike {
   get(): Promise<{ exists: boolean; data(): any }>;
   set(data: any): Promise<unknown>;

@@ -45,7 +45,6 @@ export function buildApp(deps: AppDeps) {
   return app;
 }
 
-// ---- main ----
 const cfg = loadConfig();
 const store = new Store(new Firestore({ projectId: cfg.projectId }) as any);
 const verifier = new OAuth2Client();
@@ -59,9 +58,7 @@ const deps: AppDeps = {
       const ticket = await verifier.verifyIdToken({ idToken: token, audience: cfg.projectNumber });
       const p = ticket.getPayload();
       if (!p) return false;
-      // Signature + audience are checked above. Also pin the issuer and the
-      // sender identity: Google Chat signs interaction requests with a fixed
-      // service account, so anything else must be rejected.
+      // Only accept tokens from Google Chat's own service account.
       const issOk = p.iss === "https://accounts.google.com" || p.iss === "accounts.google.com";
       if (!issOk) return false;
       if (p.email !== "chat@system.gserviceaccount.com") return false;
@@ -87,11 +84,7 @@ const deps: AppDeps = {
     });
   },
   async interact(event) {
-    // Defense in depth: verifyChat proves the request came from Google Chat;
-    // this confirms the acting user is the owner before any store mutation /
-    // task creation. The app is visible only to USER_EMAIL, so a mismatch means
-    // something is off. Chat events don't always populate user.email — enforce
-    // when present, and rely on the JWT + single-tenant store otherwise.
+    // Only the owner may act. user.email isn't always sent, so check it when present.
     const actor = event?.user?.email;
     if (actor && actor !== cfg.userEmail) {
       return { actionResponse: { type: "UPDATE_MESSAGE" }, text: "⚠️ not authorized" };
