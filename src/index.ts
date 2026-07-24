@@ -56,7 +56,16 @@ const deps: AppDeps = {
     const token = header?.replace(/^Bearer /, "");
     if (!token) return false;
     try {
-      await verifier.verifyIdToken({ idToken: token, audience: cfg.projectNumber });
+      const ticket = await verifier.verifyIdToken({ idToken: token, audience: cfg.projectNumber });
+      const p = ticket.getPayload();
+      if (!p) return false;
+      // Signature + audience are checked above. Also pin the issuer and the
+      // sender identity: Google Chat signs interaction requests with a fixed
+      // service account, so anything else must be rejected.
+      const issOk = p.iss === "https://accounts.google.com" || p.iss === "accounts.google.com";
+      if (!issOk) return false;
+      if (p.email !== "chat@system.gserviceaccount.com") return false;
+      if (p.email_verified !== true) return false;
       return true;
     } catch { return false; }
   },
@@ -78,6 +87,15 @@ const deps: AppDeps = {
     });
   },
   async interact(event) {
+    // Defense in depth: verifyChat proves the request came from Google Chat;
+    // this confirms the acting user is the owner before any store mutation /
+    // task creation. The app is visible only to USER_EMAIL, so a mismatch means
+    // something is off. Chat events don't always populate user.email — enforce
+    // when present, and rely on the JWT + single-tenant store otherwise.
+    const actor = event?.user?.email;
+    if (actor && actor !== cfg.userEmail) {
+      return { actionResponse: { type: "UPDATE_MESSAGE" }, text: "⚠️ not authorized" };
+    }
     return handleInteraction(event, {
       store,
       createTask: (d) => (cfg.logOnly ? Promise.resolve() : createTask(d, cfg, store)),
